@@ -1,0 +1,56 @@
+# Loki Configuration  
+loki:
+  # Single binary mode
+  deploymentMode: SingleBinary
+  loki:
+    # Use ephemeral storage
+    storage:
+      type: 'filesystem'
+    # Configuration
+    config: |
+      auth_enabled: false
+      server:
+        http_listen_port: 3100
+        log_level: info
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /var/loki
+        storage:
+          filesystem:
+            chunks_directory: /var/loki/chunks
+            rules_directory: /var/loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+      query_range:
+        results_cache:
+          cache:
+            embedded_cache:
+              enabled: true
+              max_size_mb: 100
+      schema_config:
+        configs:
+          - from: 2020-10-24
+            store: boltdb-shipper
+            object_store: filesystem
+            schema: v11
+            index:
+              prefix: index_
+              period: 24h
+      ruler:
+        alertmanager_url: http://kube-prometheus-stack-alertmanager:9093
+      limits_config:
+        retention_period: 168h
+  # Resource limits
+  singleBinary:
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    # Use ephemeral storage
+    persistence:
+      enabled: false

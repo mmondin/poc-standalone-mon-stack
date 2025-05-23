@@ -1,0 +1,50 @@
+# Beyla Configuration
+beyla:
+  config:
+    data:
+      # Enable Kubernetes metadata decoration
+      attributes:
+        kubernetes:
+          enable: true
+        select:
+          beyla_network_flow_bytes:
+            include: ["k8s.src.owner.type", "k8s.dst.owner.type", "direction"]
+      # Service discovery configuration  
+      discovery:
+        services:
+          - k8s_namespace: default
+          - k8s_namespace: monitoring
+      # Export configuration
+      prometheus_export:
+        port: 9090
+        path: "/metrics"
+      otel_traces_export:
+        endpoint: http://opentelemetry-collector:4318
+      # Filter out system services
+      filter:
+        network:
+          k8s_dst_owner_name:
+            not_match: "{kube*,*jaeger-agent*,*prometheus*,*promtail*,*grafana-agent*}"
+          k8s_src_owner_name:
+            not_match: "{kube*,*jaeger-agent*,*prometheus*,*promtail*,*grafana-agent*}"
+      routes:
+        unmatched: heuristic
+  # Pod annotations for Prometheus scraping
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "9090"
+  # Resource limits
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  # Ephemeral storage limits
+  env:
+    BEYLA_INTERNAL_METRICS_PROMETHEUS_PORT: "8080"
+  # Security context for eBPF capabilities
+  securityContext:
+    privileged: true

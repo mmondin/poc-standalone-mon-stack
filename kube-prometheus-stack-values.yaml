@@ -1,0 +1,104 @@
+# Kube-Prometheus-Stack Configuration
+kube-prometheus-stack:
+  # Prometheus configuration
+  prometheus:
+    prometheusSpec:
+      # Use ephemeral storage
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: ""
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+      # Data retention for development
+      retention: "7d"
+      retentionSize: "8GB"
+      # Resource limits
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "500m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
+      # Additional scrape configs for other components
+      additionalScrapeConfigs:
+        - job_name: 'tempo'
+          static_configs:
+            - targets: ['tempo:3200']
+        - job_name: 'loki'
+          static_configs:
+            - targets: ['loki:3100']
+        - job_name: 'beyla'
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: true
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+
+  # Grafana configuration
+  grafana:
+    # Use ephemeral storage
+    persistence:
+      enabled: false
+    # Resource limits
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    # Default admin credentials
+    adminPassword: "admin"
+    # Pre-configured datasources
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            url: http://kube-prometheus-stack-prometheus:9090
+            access: proxy
+            isDefault: true
+          - name: Loki
+            type: loki
+            url: http://loki:3100
+            access: proxy
+          - name: Tempo
+            type: tempo
+            url: http://tempo:3100
+            access: proxy
+            jsonData:
+              tracesToLogs:
+                datasourceUid: 'loki'
+              serviceMap:
+                datasourceUid: 'prometheus'
+
+  # Alertmanager configuration
+  alertmanager:
+    alertmanagerSpec:
+      # Use ephemeral storage
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: ""
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+      # Resource limits
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "50m"
+        limits:
+          memory: "256Mi"
+          cpu: "200m"

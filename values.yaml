@@ -1,0 +1,17 @@
+# Global settings
+global:
+  storageClass: ""  # Use default storage class
+  
+# Enable all components
+kube-prometheus-stack:
+  enabled: true
+tempo:
+  enabled: true
+loki:
+  enabled: true
+promtail:
+  enabled: true
+opentelemetry-collector:
+  enabled: true
+beyla:
+  enabled: true
