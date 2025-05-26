@@ -1,29 +1,24 @@
-# Tempo Configuration
+# ROOT LEVEL - Security context
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+
+# ROOT LEVEL - Extra volumes
+extraVolumes:
+  - name: tempo-data
+    emptyDir: {}
+
+# ROOT LEVEL - Persistence
+persistence:
+  enabled: false
+
+# TEMPO SECTION
 tempo:
-  # Image configuration
-  image:
-    repository: grafana/tempo  
-  # Use ephemeral storage
-  persistence:
-    enabled: false
+  repository: grafana/tempo
+  tag: "2.3.1"
   
-  # Security context (apply at pod level only)
-  securityContext:
-    fsGroup: 10001
-    runAsGroup: 10001
-    runAsNonRoot: true
-    runAsUser: 10001
-  
-  # Storage volumes
-  extraVolumes:
-    - name: tempo-data
-      emptyDir: {}
-  
-  extraVolumeMounts:
-    - name: tempo-data
-      mountPath: /var/tempo
-  
-  # Resources
   resources:
     requests:
       memory: "512Mi"
@@ -31,26 +26,33 @@ tempo:
     limits:
       memory: "1Gi"
       cpu: "300m"
-
-# Configuration should be at root level for many Tempo charts
-config:
-  auth_enabled: false
-  server:
-    http_listen_port: 3100
-    log_level: info
-  distributor:
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:4317
-          http:
-            endpoint: 0.0.0.0:4318
+  
+  # Volume mounts under tempo
+  extraVolumeMounts:
+    - name: tempo-data
+      mountPath: /var/tempo
+  
+  # Custom retention
+  retention: 48h
+  
+  # Storage configuration
   storage:
     trace:
       backend: local
       local:
         path: /var/tempo/traces
-  compactor:
-    compaction:
-      block_retention: 48h
+      wal:
+        path: /var/tempo/wal
+  
+  # Server configuration  
+  server:
+    http_listen_port: 3100
+  
+  # Receivers configuration
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
