@@ -3,6 +3,12 @@ tempo:
   # Use ephemeral storage
   persistence:
     enabled: false
+  # Security context
+  securityContext:
+    fsGroup: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    runAsUser: 10001
   # Storage
   extraVolumes:
     - name: tempo-data
