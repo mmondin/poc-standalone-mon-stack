@@ -1,51 +1,56 @@
 # Tempo Configuration
 tempo:
+  # Image configuration
+  image:
+    repository: grafana/tempo  
   # Use ephemeral storage
   persistence:
     enabled: false
-  # Security context
+  
+  # Security context (apply at pod level only)
   securityContext:
     fsGroup: 10001
     runAsGroup: 10001
     runAsNonRoot: true
     runAsUser: 10001
-  # Storage
+  
+  # Storage volumes
   extraVolumes:
     - name: tempo-data
       emptyDir: {}
+  
   extraVolumeMounts:
     - name: tempo-data
       mountPath: /var/tempo
-  # Single binary mode for development
-  tempo:
-    repository: grafana/tempo
-    tag: "2.3.1"
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "100m"
-      limits:
-        memory: "1Gi"
-        cpu: "300m"
-    # Configuration
-    config: |
-      auth_enabled: false
-      server:
-        http_listen_port: 3100
-        log_level: info
-      distributor:
-        receivers:
-          otlp:
-            protocols:
-              grpc:
-                endpoint: 0.0.0.0:4317
-              http:
-                endpoint: 0.0.0.0:4318
-      storage:
-        trace:
-          backend: local
-          local:
-            path: /var/tempo/traces
-      compactor:
-        compaction:
-          block_retention: 48h
+  
+  # Resources
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "300m"
+
+# Configuration should be at root level for many Tempo charts
+config:
+  auth_enabled: false
+  server:
+    http_listen_port: 3100
+    log_level: info
+  distributor:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+  compactor:
+    compaction:
+      block_retention: 48h
