@@ -85,3 +85,12 @@ loki:
   # Test configuration
   test:
     enabled: false
+
+# Additional configuration for Loki
+
+  extraVolumes:
+  - name: data
+    emptyDir: {}
+  extraVolumeMounts:
+  - name: data
+    mountPath: /var/loki
