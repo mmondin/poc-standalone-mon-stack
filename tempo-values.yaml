@@ -3,6 +3,13 @@ tempo:
   # Use ephemeral storage
   persistence:
     enabled: false
+  # Storage
+  extraVolumes:
+    - name: tempo-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: tempo-data
+      mountPath: /var/tempo
   # Single binary mode for development
   tempo:
     repository: grafana/tempo
@@ -18,7 +25,7 @@ tempo:
     config: |
       auth_enabled: false
       server:
-        http_listen_port: 3200
+        http_listen_port: 3100
         log_level: info
       distributor:
         receivers:
