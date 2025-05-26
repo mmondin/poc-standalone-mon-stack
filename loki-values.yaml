@@ -51,6 +51,13 @@ loki:
         cpu: "300m"
     persistence:
       enabled: false
+    # Additional configuration for Loki
+    extraVolumes:
+    - name: data
+      emptyDir: {}
+    extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
   
   # Explicitly disable all scalable deployment mode components
   backend:
@@ -86,11 +93,4 @@ loki:
   test:
     enabled: false
 
-# Additional configuration for Loki
 
-  extraVolumes:
-  - name: data
-    emptyDir: {}
-  extraVolumeMounts:
-  - name: data
-    mountPath: /var/loki
