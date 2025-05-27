@@ -90,7 +90,7 @@ VALUES_FILES+=("-f" "tempo-values.yaml")
 VALUES_FILES+=("-f" "loki-values.yaml")
 VALUES_FILES+=("-f" "promtail-values.yaml")
 VALUES_FILES+=("-f" "opentelemetry-collector-values.yaml")
-VALUES_FILES+=("-f" "beyla-values")
+VALUES_FILES+=("-f" "beyla-values.yaml")
 
 # Base command for helm
 HELM_CMD="helm upgrade --install $RELEASE_NAME $CHART_PATH --namespace $NAMESPACE ${VALUES_FILES[@]} --timeout $TIMEOUT"
