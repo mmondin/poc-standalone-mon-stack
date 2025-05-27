@@ -3,6 +3,9 @@ opentelemetry-collector:
   mode: daemonset
   image:
     repository: "otel/opentelemetry-collector-contrib"
+  service:
+    enabled: true
+    type: ClusterIP
   resources:
     requests:
       memory: "256Mi"
