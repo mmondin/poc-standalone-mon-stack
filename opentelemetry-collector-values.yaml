@@ -37,7 +37,11 @@ opentelemetry-collector:
         limit_mib: 400
     exporters:
       otlp/tempo:
-        endpoint: tempo:4317
+        endpoint: monitoring-tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+      otlp/loki:
+        endpoint: monitoring-loki.monitoring.svc.cluster.local:4317
         tls:
           insecure: true
       prometheus:
