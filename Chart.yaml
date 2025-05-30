@@ -14,7 +14,7 @@ dependencies:
     repository: https://grafana.github.io/helm-charts
     condition: tempo.enabled
   - name: loki
-    version: 6.30.0
+    version: 6.30.1
     repository: https://grafana.github.io/helm-charts
     condition: loki.enabled
   - name: promtail
@@ -22,7 +22,7 @@ dependencies:
     repository: https://grafana.github.io/helm-charts
     condition: promtail.enabled
   - name: opentelemetry-collector
-    version: 0.125.0
+    version: 0.126.0
     repository: https://open-telemetry.github.io/opentelemetry-helm-charts
     condition: opentelemetry-collector.enabled
   - name: beyla
