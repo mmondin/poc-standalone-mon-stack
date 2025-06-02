@@ -22,11 +22,11 @@ kube-prometheus-stack:
         limits:
           memory: "2Gi"
           cpu: "1"
-      # Additional scrape configs for other components
+      # CRITICAL FIX: Corrected scrape configs with proper service names
       additionalScrapeConfigs:
         - job_name: 'tempo'
           static_configs:
-            - targets: ['mysubchart-tempo.default.svc.cluster.local:3100']
+            - targets: ['monitoring-tempo.monitoring.svc.cluster.local:3100']
         - job_name: 'loki'
           static_configs:
             - targets: ['monitoring-loki.monitoring.svc.cluster.local:3100']
@@ -34,7 +34,7 @@ kube-prometheus-stack:
           kubernetes_sd_configs:
             - role: pod
               namespaces:
-                names: ["default", "monitoring"]
+                names: ["monitoring"]
           relabel_configs:
             - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
               action: keep
@@ -50,10 +50,11 @@ kube-prometheus-stack:
 
   # Grafana configuration
   grafana:
-    # Use ephemeral storage
+    # Disable persistence for dev environment
     persistence:
       enabled: false
-    # Resource limits
+    
+    # Resource limits (optimized for dev)
     resources:
       requests:
         memory: "256Mi"
@@ -61,14 +62,25 @@ kube-prometheus-stack:
       limits:
         memory: "512Mi"
         cpu: "500m"
+    
     # Default admin credentials
     adminPassword: "admin"
+    
+    # CRITICAL FIX: SQLite optimization for ephemeral storage
+    env:
+      GF_DATABASE_WAL: "false"  # Disable WAL mode for ephemeral storage
+      GF_DATABASE_CACHE_MODE: "private"
+      GF_DATABASE_LOCKING_MODE: "exclusive"
+    
     # Enable provisioning
     sidecar:
       datasources:
         enabled: true
         defaultDatasourceEnabled: true
-    # Additional datasources
+      dashboards:
+        enabled: true
+        
+    # CRITICAL FIX: Corrected datasource configurations with proper service names
     additionalDataSources:
       - name: Loki
         type: loki
@@ -76,9 +88,11 @@ kube-prometheus-stack:
         access: proxy
         jsonData:
           maxLines: 1000
+        # CRITICAL FIX: Add proper headers for single-tenant Loki
+        httpHeaderName1: "X-Scope-OrgID"
       - name: Tempo
         type: tempo
-        url: http://monitoring-tempo.default.svc.cluster.local:3100
+        url: http://monitoring-tempo.monitoring.svc.cluster.local:3100
         access: proxy
         jsonData:
           tracesToLogs:

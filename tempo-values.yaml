@@ -35,7 +35,7 @@ tempo:
   # Custom retention
   retention: 48h
   
-  # Storage configuration
+  # CRITICAL FIX: Proper storage configuration for single binary
   storage:
     trace:
       backend: local
@@ -47,8 +47,9 @@ tempo:
   # Server configuration  
   server:
     http_listen_port: 3100
+    grpc_listen_port: 9095
   
-  # Receivers configuration
+  # CRITICAL FIX: Complete receivers configuration
   receivers:
     otlp:
       protocols:
@@ -56,3 +57,9 @@ tempo:
           endpoint: "0.0.0.0:4317"
         http:
           endpoint: "0.0.0.0:4318"
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:14250"
+        thrift_http:
+          endpoint: "0.0.0.0:14268"

@@ -1,10 +1,16 @@
-# Loki Configuration (corrected)
+# Loki Configuration - Fixed for dev environment
 loki:
-  # Single binary mode with filesystem storage
+  # CRITICAL FIX: Use SingleBinary deployment mode
   deploymentMode: SingleBinary
+  
+  # CRITICAL FIX: Disable auth for single-tenant mode
+  auth_enabled: false
   
   # Loki configuration
   loki:
+    # CRITICAL FIX: Disable auth and set single-tenant mode
+    auth_enabled: false
+    
     # Common configuration
     commonConfig:
       replication_factor: 1
@@ -24,20 +30,25 @@ loki:
             prefix: loki_index_
             period: 24h
     
-    # Limits configuration
+    # Limits configuration - relaxed for single binary
     limits_config:
       retention_period: 168h
       allow_structured_metadata: true
       volume_enabled: true
+      # CRITICAL FIX: Increase limits for single binary mode
+      ingestion_rate_mb: 16
+      ingestion_burst_size_mb: 32
+      max_query_parallelism: 32
+      query_timeout: 300s
     
     # Pattern ingester
     pattern_ingester:
       enabled: true
     
-    # Ruler configuration
+    # Ruler configuration with correct AlertManager service name
     ruler:
       enable_api: true
-      alertmanager_url: http://kube-prometheus-stack-alertmanager:9093
+      alertmanager_url: http://monitoring-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093
   
   # Single binary configuration
   singleBinary:
@@ -49,9 +60,10 @@ loki:
       limits:
         memory: "1Gi"
         cpu: "300m"
+    # Disable persistence for dev environment
     persistence:
       enabled: false
-    # Additional configuration for Loki
+    # Use emptyDir for dev
     extraVolumes:
     - name: data
       emptyDir: {}
@@ -59,12 +71,12 @@ loki:
     - name: data
       mountPath: /var/loki
   
-  # Explicitly disable all scalable deployment mode components
-  backend:
+  # CRITICAL FIX: Explicitly disable all scalable deployment mode components
+  write:
     replicas: 0
   read:
     replicas: 0
-  write:
+  backend:
     replicas: 0
   ingester:
     replicas: 0
@@ -84,10 +96,25 @@ loki:
     replicas: 0
   bloomGateway:
     replicas: 0
+  bloomBuilder:
+    replicas: 0
+  resultsCache:
+    replicas: 0
+  chunksCache:
+    replicas: 0
+  
+  # CRITICAL FIX: Disable gateway and caches that cause ring issues
+  gateway:
+    enabled: false
   
   # Disable MinIO since we're using filesystem storage
   minio:
     enabled: false
+  
+  # CRITICAL FIX: Disable monitoring components that require ring
+  monitoring:
+    lokiCanary:
+      enabled: false
   
   # Test configuration
   test:

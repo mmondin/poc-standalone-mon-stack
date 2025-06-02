@@ -8,9 +8,50 @@ promtail:
       memory: "256Mi"
       cpu: "200m"
   config:
+    # CRITICAL FIX: Use direct Loki service (not gateway) for single binary mode
     clients:
       - url: http://monitoring-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+        # CRITICAL FIX: Add tenant header for single-tenant mode
+        tenant_id: "fake"
     positions:
-      filename: /tmp/positions.yaml
+      filename: /var/lib/promtail/positions.yaml
     target_config:
       sync_period: 10s
+    # CRITICAL FIX: Add scrape configs for better log collection
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_controller_name
+            regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
+            action: replace
+            target_label: __tmp_controller_name
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_name
+              - __meta_kubernetes_pod_label_app
+              - __tmp_controller_name
+              - __meta_kubernetes_pod_name
+            regex: ^;*([^;]+)(;.*)?$
+            action: replace
+            target_label: app
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+              - __meta_kubernetes_pod_label_instance
+            regex: ^;*([^;]+)(;.*)?$
+            action: replace
+            target_label: instance
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_component
+              - __meta_kubernetes_pod_label_component
+            regex: ^;*([^;]+)(;.*)?$
+            action: replace
+            target_label: component
+  # CRITICAL FIX: Add writable volume for positions file
+  extraVolumes:
+    - name: promtail-run
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: promtail-run
+      mountPath: /var/lib/promtail
