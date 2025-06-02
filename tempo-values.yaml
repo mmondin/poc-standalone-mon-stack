@@ -1,3 +1,143 @@
+# Tempo Configuration - Fixed for TraceQL queries and single binary mode
+# Use chart-native structure with proper metrics generator configuration
+
+# CRITICAL: Custom config override to include enhanced metrics generator
+config: |
+  memberlist:
+    cluster_label: "{{ .Release.Name }}.{{ .Release.Namespace }}"
+  multitenancy_enabled: {{ .Values.tempo.multitenancyEnabled }}
+  usage_report:
+    reporting_enabled: {{ .Values.tempo.reportingEnabled }}
+  compactor:
+    compaction:
+      block_retention: {{ .Values.tempo.retention }}
+  distributor:
+    receivers:
+      {{- toYaml .Values.tempo.receivers | nindent 6 }}
+  ingester:
+    {{- toYaml .Values.tempo.ingester | nindent 4 }}
+  server:
+    {{- toYaml .Values.tempo.server | nindent 4 }}
+  storage:
+    {{- toYaml .Values.tempo.storage | nindent 4 }}
+  querier:
+    {{- toYaml .Values.tempo.querier | nindent 4 }}
+  query_frontend:
+    {{- toYaml .Values.tempo.queryFrontend | nindent 4 }}
+  # CRITICAL: Enhanced metrics generator configuration
+  metrics_generator:
+    storage:
+      path: /var/tempo/generator/wal
+      remote_write:
+        - url: {{ .Values.tempo.metricsGenerator.remoteWriteUrl }}
+          remote_write_add_org_id_header: false
+    traces_storage:
+      path: /var/tempo/generator/traces
+    processor:
+      service_graphs:
+        dimensions:
+          - job
+          - instance
+          - namespace
+        histogram_buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8]
+      span_metrics:
+        dimensions:
+          - service.name
+          - service.namespace
+          - span.name
+          - span.kind
+          - status.code
+        histogram_buckets: [0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+  overrides:
+    {{- toYaml .Values.tempo.overrides | nindent 4 }}
+
+# CRITICAL: Configure tempo section to work with chart's native structure
+tempo:
+  repository: grafana/tempo
+  tag: "2.3.1"
+  
+  # Disable multitenancy for single binary mode
+  multitenancyEnabled: false
+  
+  # Set retention period
+  retention: 48h
+  
+  # CRITICAL FIX: Enable metrics generator for TraceQL rate queries
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+  
+  # Configure receivers for traces
+  receivers:
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_binary:
+          endpoint: 0.0.0.0:6832
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    opencensus:
+  
+  # Configure ingester
+  ingester:
+    trace_idle_period: 10s
+    max_block_duration: 5m
+    flush_check_period: 10s
+  
+  # Configure storage
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  
+  # Configure querier
+  querier:
+    max_concurrent_queries: 20
+  
+  # Configure query frontend
+  queryFrontend:
+    search:
+      concurrent_jobs: 1000
+      target_bytes_per_job: 104857600
+    trace_by_id:
+      query_shards: 2
+  
+  # Configure overrides for metrics generator
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+        storage:
+          path: /var/tempo/generator/wal
+          remote_write_add_org_id_header: false
+    per_tenant_override_config: /conf/overrides.yaml
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "300m"
+
+# ROOT LEVEL - Persistence
+persistence:
+  enabled: false
+
 # ROOT LEVEL - Security context
 securityContext:
   runAsUser: 10001
@@ -10,56 +150,7 @@ extraVolumes:
   - name: tempo-data
     emptyDir: {}
 
-# ROOT LEVEL - Persistence
-persistence:
-  enabled: false
-
-# TEMPO SECTION
-tempo:
-  repository: grafana/tempo
-  tag: "2.3.1"
-  
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "100m"
-    limits:
-      memory: "1Gi"
-      cpu: "300m"
-  
-  # Volume mounts under tempo
-  extraVolumeMounts:
-    - name: tempo-data
-      mountPath: /var/tempo
-  
-  # Custom retention
-  retention: 48h
-  
-  # CRITICAL FIX: Proper storage configuration for single binary
-  storage:
-    trace:
-      backend: local
-      local:
-        path: /var/tempo/traces
-      wal:
-        path: /var/tempo/wal
-  
-  # Server configuration  
-  server:
-    http_listen_port: 3100
-    grpc_listen_port: 9095
-  
-  # CRITICAL FIX: Complete receivers configuration
-  receivers:
-    otlp:
-      protocols:
-        grpc:
-          endpoint: "0.0.0.0:4317"
-        http:
-          endpoint: "0.0.0.0:4318"
-    jaeger:
-      protocols:
-        grpc:
-          endpoint: "0.0.0.0:14250"
-        thrift_http:
-          endpoint: "0.0.0.0:14268"
+# Volume mounts at root level for the StatefulSet
+extraVolumeMounts:
+  - name: tempo-data
+    mountPath: /var/tempo
