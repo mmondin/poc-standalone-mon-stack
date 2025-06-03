@@ -6,6 +6,11 @@ loki:
   # CRITICAL FIX: Disable auth for single-tenant mode
   auth_enabled: false
   
+  # temporary bug fix
+  # https://github.com/grafana/loki/issues/17371
+  image:
+    tag: "v3.5.1"
+
   # Loki configuration
   loki:
     # CRITICAL FIX: Disable auth and set single-tenant mode
