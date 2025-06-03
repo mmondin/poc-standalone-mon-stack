@@ -1,0 +1,175 @@
+# Kube-Prometheus-Stack Configuration
+kube-prometheus-stack:
+  # Prometheus configuration
+  prometheus:
+    prometheusSpec:
+      # Storage configuration
+      # storageSpec:
+      #   volumeClaimTemplate:
+      #     spec:
+      #       accessModes: ["ReadWriteOnce"]
+      #       resources:
+      #         requests:
+      #           storage: 10Gi
+      # Data retention for development
+      retention: "7d"
+      retentionSize: "8GB"
+      # Resource limits
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "300m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
+      # CRITICAL FIX: Corrected scrape configs with proper service names
+      additionalScrapeConfigs:
+        - job_name: 'tempo'
+          static_configs:
+            - targets: ['monitoring-tempo.monitoring.svc.cluster.local:3100']
+        - job_name: 'loki'
+          static_configs:
+            - targets: ['monitoring-loki.monitoring.svc.cluster.local:3100']
+        - job_name: 'beyla'
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names: ["monitoring"]
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: true
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              target_label: __metrics_port__
+              regex: (.+)
+
+  # Grafana configuration
+  grafana:
+    # Disable persistence for dev environment
+    persistence:
+      enabled: false
+    
+    # Resource limits (optimized for dev)
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    
+    # Default admin credentials
+    adminPassword: "admin"
+    
+    # CRITICAL FIX: SQLite optimization for ephemeral storage
+    env:
+      GF_DATABASE_WAL: "false"  # Disable WAL mode for ephemeral storage
+      GF_DATABASE_CACHE_MODE: "private"
+      GF_DATABASE_LOCKING_MODE: "exclusive"
+    
+    # Enable provisioning
+    sidecar:
+      datasources:
+        enabled: true
+        defaultDatasourceEnabled: true
+      dashboards:
+        enabled: true
+        
+    # CRITICAL FIX: Corrected datasource configurations with proper service names
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://monitoring-loki.monitoring.svc.cluster.local:3100
+        access: proxy
+        uid: loki  # Set a specific UID for Loki
+        jsonData:
+          maxLines: 1000
+        # CRITICAL FIX: Add proper headers for single-tenant Loki
+        httpHeaderName1: "X-Scope-OrgID"
+      - name: Tempo
+        type: tempo
+        url: http://monitoring-tempo.monitoring.svc.cluster.local:3100
+        access: proxy
+        uid: tempo  # Set a specific UID for Tempo
+        jsonData:
+          tracesToLogs:
+            datasourceUid: 'loki'  # Use consistent UID
+            tags: ['job', 'instance', 'pod', 'namespace']
+            mappedTags: [
+              {
+                key: 'service.name',
+                value: 'service'
+              }
+            ]
+            mapTagNamesEnabled: false
+            spanStartTimeShift: '1h'
+            spanEndTimeShift: '1h'
+            filterByTraceID: false
+            filterBySpanID: false
+          serviceMap:
+            datasourceUid: 'prometheus'  # This is correct
+          nodeGraph:
+            enabled: true
+          lokiSearch:
+            datasourceUid: 'loki'  # Use consistent UID
+
+  # Alertmanager configuration
+  alertmanager:
+    alertmanagerSpec:
+      # Storage configuration
+      # storage:
+      #   volumeClaimTemplate:
+      #     spec:
+      #       accessModes: ["ReadWriteOnce"]
+      #       resources:
+      #         requests:
+      #           storage: 2Gi
+      # Resource limits
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "50m"
+        limits:
+          memory: "256Mi"
+          cpu: "200m"
+
+  # Global configuration
+  global:
+    rbac:
+      create: true
+    
+  # Component-specific configurations
+  kubeApiServer:
+    enabled: true
+  
+  kubelet:
+    enabled: true
+    
+  kubeControllerManager:
+    enabled: true
+    
+  coreDns:
+    enabled: true
+    
+  kubeEtcd:
+    enabled: true
+    
+  kubeScheduler:
+    enabled: true
+    
+  kubeProxy:
+    enabled: true
+    
+  kubeStateMetrics:
+    enabled: true
+    
+  nodeExporter:
+    enabled: true
+    
+  prometheusOperator:
+    enabled: true

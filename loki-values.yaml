@@ -1,0 +1,131 @@
+# Loki Configuration - Fixed for dev environment
+loki:
+  # CRITICAL FIX: Use SingleBinary deployment mode
+  deploymentMode: SingleBinary
+  
+  # CRITICAL FIX: Disable auth for single-tenant mode
+  auth_enabled: false
+
+  # Loki configuration
+  loki:
+    # CRITICAL FIX: Disable auth and set single-tenant mode
+    auth_enabled: false
+
+    # temporary bug fix
+    # https://github.com/grafana/loki/issues/17371
+    image:
+      tag: 3.5.1
+    # may be necessary to force the upgrade
+#    podAnnotations:
+#      deployment.kubernetes.io/revision: "{{ now | unixEpoch }}"
+    
+    # Common configuration
+    commonConfig:
+      replication_factor: 1
+    
+    # Storage configuration for filesystem
+    storage:
+      type: 'filesystem'
+    
+    # Schema configuration
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    
+    # Limits configuration - relaxed for single binary
+    limits_config:
+      retention_period: 168h
+      allow_structured_metadata: true
+      volume_enabled: true
+      # CRITICAL FIX: Increase limits for single binary mode
+      ingestion_rate_mb: 16
+      ingestion_burst_size_mb: 32
+      max_query_parallelism: 32
+      query_timeout: 300s
+    
+    # Pattern ingester
+    pattern_ingester:
+      enabled: true
+    
+    # Ruler configuration with correct AlertManager service name
+    ruler:
+      enable_api: true
+      alertmanager_url: http://monitoring-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093
+  
+  # Single binary configuration
+  singleBinary:
+    replicas: 1
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "300m"
+    # Disable persistence for dev environment
+    persistence:
+      enabled: false
+    # Use emptyDir for dev
+    extraVolumes:
+    - name: data
+      emptyDir: {}
+    extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
+  
+  # CRITICAL FIX: Explicitly disable all scalable deployment mode components
+  write:
+    replicas: 0
+  read:
+    replicas: 0
+  backend:
+    replicas: 0
+  ingester:
+    replicas: 0
+  querier:
+    replicas: 0
+  queryFrontend:
+    replicas: 0
+  queryScheduler:
+    replicas: 0
+  distributor:
+    replicas: 0
+  compactor:
+    replicas: 0
+  indexGateway:
+    replicas: 0
+  bloomCompactor:
+    replicas: 0
+  bloomGateway:
+    replicas: 0
+  bloomBuilder:
+    replicas: 0
+  resultsCache:
+    replicas: 0
+  chunksCache:
+    replicas: 0
+  
+  # CRITICAL FIX: Disable gateway and caches that cause ring issues
+  gateway:
+    enabled: false
+  
+  # Disable MinIO since we're using filesystem storage
+  minio:
+    enabled: false
+  
+  # CRITICAL FIX: Disable monitoring components that require ring
+  monitoring:
+    lokiCanary:
+      enabled: false
+  
+  # Test configuration
+  test:
+    enabled: false
+
+
